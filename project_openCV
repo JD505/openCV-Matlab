@@ -1,0 +1,378 @@
+% Ler a imagem
+Imagem = imread('15.jpg');
+%Converter de RGB para HSV
+HSV = rgb2hsv(Imagem);
+%Separar as componentes (hue,saturation e value)
+H = HSV(:,:,1);
+S = HSV(:,:,2);
+V = HSV(:,:,3);
+
+%Fazer threshold de cada canal
+bwH = roicolor(H,0, 1.0);
+bwS = roicolor(S,0, 1.0);
+bwV = roicolor(V,0.3, 1.0);
+
+%Combinar regi�es selecionadas em cada canal para segmentar
+bw_imagem =bwH.*bwS.*bwV;
+
+%Elemento estruturante (disco)
+se_imagem = strel('disk',3);
+%Opera��o morfologia (Abertura)
+bwO_imagem = imopen(bw_imagem,se_imagem);
+
+%mediana
+media_imagem = medfilt2(bwO_imagem); 
+
+%Identificar o n�mero de objetos
+cc_imagem = bwconncomp(media_imagem);
+disp(cc_imagem.NumObjects);
+
+%Etiquetagem 
+bwL_imagem = bwlabel(media_imagem); 
+
+figure; imshow(media_imagem); title('Conta n� objetos');
+
+rp_imagem = regionprops(cc_imagem, 'Centroid', 'BoundingBox'); 
+
+hold on;
+for i = 1:cc_imagem.NumObjects;
+    plot(rp_imagem(i).Centroid(1), rp_imagem(i).Centroid(2), 'xr'); rectangle('Position', rp_imagem(i).BoundingBox, 'EdgeColor', 'r'); 
+    text(rp_imagem(i).Centroid(1)+5,rp_imagem(i).Centroid(2)+5, num2str(i), 'Color', 'r', 'FontSize',15);
+end 
+
+%Tapar furos
+bwL_imagem = imfill(bwL_imagem,'holes');
+%Contorno dos objetos
+[B,Z] = bwboundaries (bwL_imagem);
+
+hold on
+
+% contorno do objeto
+for k = 1:length(B)
+  boundary_imagem = B{k};
+  plot(boundary_imagem(:,2), boundary_imagem(:,1), 'g', 'LineWidth', 2);
+  
+ end
+
+stats_area = regionprops(Z,'Area');
+   
+maiorArea=0; menorArea=100000000;
+hold on 
+%Area dos objetos
+for k = 1:length (B)
+    
+    %obtem (x,y) do contorno K 
+    boundary_imagem = B {k};
+   
+    %area do contorno K 
+    area = stats_area(k).Area;
+   
+   if (area>maiorArea)
+       maiorArea=area; 
+       boundary_max_area = B {k};
+   end
+        %Escreve texto
+       area_string = sprintf ('%0.f px Area Maior',maiorArea);
+       
+     if (area<menorArea)
+       menorArea=area; 
+       boundary_min_area =  B {k};
+     end
+        string_menor_area = sprintf ('%0.f px Area Menor',menorArea);
+end
+
+
+%Carateristicas do texto da Maior Area
+     text (boundary_max_area (1,2)+5,boundary_max_area(1,1)+10,area_string,...
+      'Color','white',...
+      'FontSize',8,...
+      'FontWeight','bold',...
+      'BackgroundColor','black',...
+      'FontName','Times');  
+  
+% contorno do objeto
+    plot(boundary_max_area(:,2), boundary_max_area(:,1), 'b', 'LineWidth', 2);
+
+  %Carateristicas do texto da Menor Area
+     text (boundary_min_area (1,2)+5,boundary_min_area (1,1)+10,string_menor_area,...
+      'Color','white',...
+      'FontSize',8,...
+      'FontWeight','bold',...
+      'BackgroundColor','black',...
+      'FontName','Times'); 
+  
+ % contorno do objeto
+ plot(boundary_min_area(:,2), boundary_min_area(:,1), 'b', 'LineWidth', 2);
+  
+
+% Mostar perimetro
+ stats_perimetro = regionprops (Z,'Perimeter');
+
+ maiorPerimetro=0;  menorPerimetro=1000000000000;
+ 
+% Calcular perimetro
+for k = 1:length (B)
+%     obtem x,y do contorno k 
+    boundary_imagem = B{k};
+    
+%     O perimetro do contorno
+    perimetro = stats_perimetro(k).Perimeter; 
+    
+     if perimetro>maiorPerimetro
+       maiorPerimetro=perimetro; 
+       
+       boundary_max_perimetro =  B {k};
+      end
+    
+    Perimetro_string = sprintf ('%.0f px Perimetro Maior',maiorPerimetro);
+   
+   if perimetro<menorPerimetro
+       menorPerimetro=perimetro; 
+       boundary_min_perimetro =  B {k};
+    
+   end
+        string_menor_perimetro = sprintf ('%0.f px Perimetro Menor',menorPerimetro);
+
+end
+
+%Maior Perimetro texto Carateristicas
+ text (boundary_max_perimetro (1,2)+30,boundary_max_perimetro (1,1)+53,Perimetro_string,...
+      'Color','white',...
+      'FontSize',8,...
+      'FontWeight','bold',...
+      'BackgroundColor','black',...
+      'FontName','Times');
+  
+% contorno do objeto
+plot(boundary_max_perimetro(:,2), boundary_max_perimetro(:,1), 'b', 'LineWidth', 2);
+  
+ 
+%Menor Perimetro texto Carateristicas
+ text (boundary_min_perimetro (1,2)+30,boundary_min_perimetro (1,1)+53,string_menor_perimetro,...
+      'Color','white',...
+      'FontSize',8,...
+      'FontWeight','bold',...
+      'BackgroundColor','black',...
+      'FontName','Times');
+  
+ % contorno do objeto
+ plot(boundary_min_perimetro(:,2), boundary_min_perimetro(:,1), 'b', 'LineWidth', 2);
+  
+%Detetar objeto vermelho 
+bwrH = roicolor(H,0/360, 45/360);
+bwrH_1 =roicolor(H,320/360, 360/360);
+bwrS = roicolor(S,0.6 ,1.0);
+bwrV = roicolor(V,0.4, 1.0);
+
+bwr = (bwrH+bwrH_1).*bwrS.*bwrV;
+
+%Preencher regi�es e furos na imagem
+bc_red = imfill(bwr,'holes');
+
+se_red = strel('disk',2);
+bwO_red = imopen(bc_red,se_red);
+
+%Identificar o numero de objetos
+cc_red = bwconncomp(bwO_red);
+disp(cc_red.NumObjects);
+
+%Etiquetagem 
+bwL_red = bwlabel(bwO_red); 
+figure;
+subplot(1,2,1);imshow(bwO_red); title('Conta n� objetos Vermelhos');
+rp_red = regionprops(cc_red, 'Area',  'Centroid', 'BoundingBox'); 
+
+hold on;
+for i = 1:cc_red.NumObjects;
+    plot(rp_red(i).Centroid(1), rp_red(i).Centroid(2), 'xr'); rectangle('Position', rp_red(i).BoundingBox, 'EdgeColor', 'r'); 
+    text(rp_red(i).Centroid(1)+5,rp_red(i).Centroid(2)+5, num2str(i), 'Color', 'r', 'FontSize',15);
+end 
+
+
+%Contorno dos objetos Vermelhos
+[N] = bwboundaries (bwO_red);
+
+hold on
+% contorno do objeto
+for k = 1:length(N)
+  boundary_red = N{k};
+  plot(boundary_red(:,2), boundary_red(:,1), 'red', 'LineWidth', 2);
+  
+end
+
+hold on
+for k = 1:length (N)
+    
+     boundary_red = N {k};
+     
+   vermelho_string = sprintf ('%0.s vermelho',bwO_red);
+ 
+ %Carateristicas do texto
+     text (boundary_red (1,2)+5,boundary_red (1,1)+10,vermelho_string,...
+      'Color','white',...
+      'FontSize',8,...
+      'FontWeight','bold',...
+      'BackgroundColor','black',...
+      'FontName','Times');  
+
+end
+
+%Cor azul 
+bwcbH = roicolor(H,180/360, 300/360);
+bwcbS = roicolor(S,0.3 ,1.0);
+bwcbV = roicolor(V,0.4, 1.0);
+
+bwb_blue = bwcbH.*bwcbS.*bwcbV;
+
+%Aplicar disco
+se_blue = strel ('disk',2);
+%Aplicar abertura
+bwO_blue = imopen(bwb_blue,se_blue);
+
+bc_blue = imfill(bwO_blue,'holes');
+
+%Identificar o numero de objetos
+cc_blue = bwconncomp(bc_blue);
+disp(cc_blue.NumObjects);
+
+%Etiquetagem 
+bwL_blue = bwlabel(bc_blue); 
+
+subplot(1,2,2);imshow(bc_blue); title('Conta n� objetos Azuis');
+rp_blue = regionprops(cc_blue, 'Area',  'Centroid', 'BoundingBox'); 
+
+hold on;
+for i = 1:cc_blue.NumObjects;
+    plot(rp_blue(i).Centroid(1), rp_blue(i).Centroid(2), 'xr'); rectangle('Position', rp_blue(i).BoundingBox, 'EdgeColor', 'r'); 
+    text(rp_blue(i).Centroid(1)+5,rp_blue(i).Centroid(2)+5, num2str(i), 'Color', 'r', 'FontSize',15);
+end 
+
+%Contorno dos objetos Azul
+[N] = bwboundaries (bc_blue);
+
+hold on
+% contorno do objeto
+for k = 1:length(N)
+  boundary_blue = N{k};
+  plot(boundary_blue(:,2), boundary_blue(:,1), 'blue', 'LineWidth', 2);
+  
+end
+
+hold on
+for k = 1:length (N)
+    
+     boundary_blue = N {k};
+     
+    azul_string = sprintf ('%0.s Azul',bc_blue);
+    
+  %Carateristicas do texto
+     text (boundary_blue (1,2)+5,boundary_blue (1,1)+10,azul_string,...
+      'Color','white',...
+      'FontSize',8,...
+      'FontWeight','bold',...
+      'BackgroundColor','black',...
+      'FontName','Times');  
+
+end
+
+bw_ciruclos=bwL_imagem;
+%circulos
+[W,G] = bwboundaries (bw_ciruclos);
+rp_circulos = regionprops(G,'Area','EquivDiameter','Perimeter','Centroid','BoundingBox');
+
+%identificar os circulos
+true_circ=([rp_circulos.Area]./[rp_circulos.Perimeter])>[rp_circulos.EquivDiameter]/4;
+cc_circulos = bwconncomp(bw_ciruclos);
+
+bw_noCirculos=bw_ciruclos;
+for j = 1:cc_circulos.NumObjects
+   
+    if (true_circ(j))==0
+    bw_ciruclos(cc_circulos.PixelIdxList{j}) = 0;
+    numeros_Circulos(j)=j;
+    else
+    bw_noCirculos(cc_circulos.PixelIdxList{j}) = 0;
+    end     
+end
+%mostrar primeira imagem-circulos
+
+[W,G] = bwboundaries (bw_ciruclos);
+cc_circulos = bwconncomp(bw_ciruclos);
+rp_circulos = regionprops(G,'Area','EquivDiameter','Perimeter','Centroid','BoundingBox');
+figure;subplot(1,2,1);imshow(bw_ciruclos);title('Circulos :'); hold on;
+
+for i = 1.0:cc_circulos.NumObjects 
+
+plot(rp_circulos(i).Centroid(1), rp_circulos(i).Centroid(2), 'xr'); 
+rectangle('Position', rp_circulos(i).BoundingBox, 'EdgeColor', 'r');
+text(rp_circulos(i).Centroid(1)+5,rp_circulos(i).Centroid(2)+5, num2str(i), 'Color', 'r', 'FontSize',15); 
+end
+
+%mostrar segunda imagem- no -circulos
+
+[W,G] = bwboundaries (bw_noCirculos);
+cc_circulos = bwconncomp(bw_noCirculos);
+rp_circulos = regionprops(G,'Area','EquivDiameter','Perimeter','Centroid','BoundingBox');
+ subplot(1,2,2);imshow(bw_noCirculos);title('N�o Circulos: '); hold on;
+
+for i = 1.0:cc_circulos.NumObjects 
+
+plot(rp_circulos(i).Centroid(1), rp_circulos(i).Centroid(2), 'xr'); 
+rectangle('Position', rp_circulos(i).BoundingBox, 'EdgeColor', 'r');
+text(rp_circulos(i).Centroid(1)+5,rp_circulos(i).Centroid(2)+5, num2str(i), 'Color', 'r', 'FontSize',15); 
+end
+
+
+
+
+
+%Converter para binario para usar a fun��o eulerNumber
+bw = im2bw(bwO_imagem,10/255);
+
+%Converter valores numericos para logica
+A = logical(bw);
+Z = bwlabel(A);
+
+rp_furos = regionprops(Z, 'EulerNumber','Centroid','BoundingBox');
+furos = find( [rp_furos.EulerNumber] < 1 ); 
+
+%Qualquer elemento diferente de zero A� convertido em l�gico 1( true)
+%e zeros s�o convertidos em l�gico 0( false)
+peca_furos = false(size(A));
+
+for p = furos
+    peca_furos( Z == p ) = true;
+end
+
+%ojetos sem furos
+bw_furo = (bwO_imagem - peca_furos);
+
+%Fechar os furos da pe�a
+be = imfill(peca_furos,'holes'); 
+
+%furos soltos<
+bb = (be-peca_furos);
+
+cc_furos = bwconncomp(bb);%------------------ estou a uzar a dos furos soltos
+bw_furos = bwlabel(bb);%--------------------
+
+rp_furos = regionprops(cc_furos, 'Area',  'Centroid', 'BoundingBox'); 
+figure;
+subplot(1,2,1); imshow(peca_furos); title('Pe�as com furos');
+hold on;
+for i = 1:cc_furos.NumObjects 
+    plot(rp_furos(i).Centroid(1), rp_furos(i).Centroid(2), 'xr'); rectangle('Position', rp_furos(i).BoundingBox, 'EdgeColor', 'r'); 
+    text(rp_furos(i).Centroid(1)+5,rp_furos(i).Centroid(2)+5, num2str(i), 'Color', 'r', 'FontSize',15); 
+end
+
+cc_furos = bwconncomp(bw_furo);
+bw_furos = bwlabel(bw_furo);
+
+rp_furos = regionprops(cc_furos, 'Area',  'Centroid', 'BoundingBox'); 
+subplot(1,2,2); imshow(bw_furo); title('Pe�as sem furos');
+hold on;
+for i = 1:cc_furos.NumObjects 
+    plot(rp_furos(i).Centroid(1), rp_furos(i).Centroid(2), 'xr'); rectangle('Position', rp_furos(i).BoundingBox, 'EdgeColor', 'r'); 
+    text(rp_furos(i).Centroid(1)+5,rp_furos(i).Centroid(2)+5, num2str(i), 'Color', 'r', 'FontSize',15); 
+end
+
